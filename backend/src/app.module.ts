@@ -5,6 +5,7 @@ import { validateEnvironment } from "./config/environment";
 import { AuthModule } from "./auth";
 import { DatabaseModule } from "./database/database.module";
 import { ImportsModule } from "./imports";
+import { PortfolioModule } from "./portfolio";
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { ImportsModule } from "./imports";
     AuthModule,
     DatabaseModule,
     ImportsModule,
+    PortfolioModule,
   ],
 })
 export class AppModule {}
