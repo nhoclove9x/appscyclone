@@ -6,6 +6,7 @@ allowBuilds:
   "@nestjs/core": true
   "@prisma/client": true
   "@prisma/engines": true
+  argon2: true
   prisma: true
 
 # Prisma Client generation intentionally writes generated artifacts under
