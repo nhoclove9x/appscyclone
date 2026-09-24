@@ -15,6 +15,7 @@
     "start:prod": "node dist/main.js",
     "test": "jest --runInBand",
     "test:integration": "jest --config jest.integration.config.cjs --runInBand",
+    "test:portfolio": "jest --runInBand src/portfolio/domain/calculate-portfolio.spec.ts test/portfolio/supplied-data.unit.spec.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -24,6 +25,7 @@
     "@nestjs/platform-express": "11.1.6",
     "@prisma/client": "6.19.0",
     "connect-pg-simple": "10.0.0",
+    "decimal.js": "10.6.0",
     "express-session": "1.18.2",
     "pg": "8.16.3",
     "reflect-metadata": "0.2.2",
