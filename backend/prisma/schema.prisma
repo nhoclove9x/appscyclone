@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Exchange {
+  Binance
+  Coinbase
+}
+
+enum TradeSide {
+  BUY
+  SELL
+}
+
+enum DatasetSource {
+  SAMPLE
+  UPLOAD
+}
+
+model User {
+  id               String    @id @default(uuid()) @db.Uuid
+  email            String    @unique @db.VarChar(254)
+  passwordHash     String    @map("password_hash")
+  disabled         Boolean   @default(false)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  importedDatasets Dataset[]
+
+  @@map("users")
+}
+
+model PriceSnapshot {
+  id             String    @id @default(uuid()) @db.Uuid
+  asOf           DateTime  @map("as_of") @db.Timestamptz(6)
+  sourceFilename String    @map("source_filename")
+  sourceChecksum String    @map("source_checksum") @db.Char(64)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  prices         Price[]
+  datasets       Dataset[]
+
+  @@map("price_snapshots")
+}
+
+model Price {
+  snapshotId String        @map("snapshot_id") @db.Uuid
+  symbol     String
+  priceUsd   Decimal       @map("price_usd") @db.Decimal(38, 18)
+  snapshot   PriceSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([snapshotId, symbol])
+  @@map("prices")
+}
+
+model Dataset {
+  id              String             @id @default(uuid()) @db.Uuid
+  source          DatasetSource
+  sourceFilename  String             @map("source_filename")
+  sourceChecksum  String             @map("source_checksum") @db.Char(64)
+  priceSnapshotId String             @map("price_snapshot_id") @db.Uuid
+  importedById    String?            @map("imported_by_id") @db.Uuid
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  priceSnapshot   PriceSnapshot      @relation(fields: [priceSnapshotId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  importedBy      User?              @relation(fields: [importedById], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  trades          Trade[]
+  activeStates    ApplicationState[]
+
+  @@map("datasets")
+}
+
+model Trade {
+  datasetId       String    @map("dataset_id") @db.Uuid
+  tradeId         String    @map("trade_id")
+  sourceRowNumber Int       @map("source_row_number")
+  timestamp       DateTime  @db.Timestamptz(6)
+  exchange        Exchange
+  symbol          String
+  side            TradeSide
+  quantity        Decimal   @db.Decimal(38, 18)
+  priceUsd        Decimal   @map("price_usd") @db.Decimal(38, 18)
+  feeUsd          Decimal   @map("fee_usd") @db.Decimal(38, 18)
+  dataset         Dataset   @relation(fields: [datasetId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([datasetId, tradeId])
+  @@unique([datasetId, sourceRowNumber])
+  @@index([datasetId, timestamp, tradeId], map: "trades_dataset_time_idx")
+  @@index([datasetId, symbol, timestamp, tradeId], map: "trades_dataset_symbol_time_idx")
+  @@map("trades")
+}
+
+model ApplicationState {
+  id              Int      @id @default(1) @db.SmallInt
+  activeDatasetId String   @map("active_dataset_id") @db.Uuid
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  activeDataset   Dataset  @relation(fields: [activeDatasetId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@map("application_state")
+}

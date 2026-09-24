@@ -1,0 +1,4 @@
+interface:
+  display_name: "Frontend TypeScript Quality"
+  short_description: "React typing, state boundaries, and accessibility"
+  default_prompt: "Use $frontend-typescript-quality to implement or review this frontend TypeScript change."

@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build and generated output
+dist/
+coverage/
+.vite/
+*.tsbuildinfo
+.eslintcache
+
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test and browser artifacts
+playwright-report/
+test-results/
+
+# Local database data
+postgres-data/
+
+# Local editor, OS, and agent metadata
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.serena/
+
+# Local AI workflow scratch notes; curated evidence remains in AI_WORKFLOW.md
+ai_workflow_notes/

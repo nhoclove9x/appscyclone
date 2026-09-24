@@ -1,0 +1,4 @@
+interface:
+  display_name: "Backend TypeScript Quality"
+  short_description: "NestJS quality and Decimal-safe domain rules"
+  default_prompt: "Use $backend-typescript-quality to implement or review this backend TypeScript change."
