@@ -37,7 +37,7 @@ async function createTestingApp(
   process.env.NODE_ENV = options.nodeEnv ?? "test";
   process.env.ALLOWED_ORIGINS = allowedOrigin;
   process.env.SESSION_COOKIE_NAME =
-    options.sessionCookieName ?? "appcyclone.sid";
+    options.sessionCookieName ?? "AppsCyclone.sid";
   process.env.SESSION_SECRET = options.sessionSecret ?? testSessionSecret;
   process.env.SESSION_TTL_SECONDS = "3600";
   process.env.TRUST_PROXY_HOPS = String(options.trustProxyHops ?? 0);
@@ -86,15 +86,15 @@ function sessionIdFromSetCookie(setCookie: unknown): string {
   const cookies = Array.isArray(setCookie) ? setCookie : [setCookie];
   const sessionCookie = cookies.find(
     (cookie): cookie is string =>
-      typeof cookie === "string" && cookie.startsWith("appcyclone.sid="),
+      typeof cookie === "string" && cookie.startsWith("AppsCyclone.sid="),
   );
 
   if (sessionCookie === undefined) {
-    throw new Error("Expected appcyclone.sid Set-Cookie header");
+    throw new Error("Expected AppsCyclone.sid Set-Cookie header");
   }
 
   const encodedCookieValue = sessionCookie
-    .slice("appcyclone.sid=".length)
+    .slice("AppsCyclone.sid=".length)
     .split(";")[0];
 
   if (encodedCookieValue === undefined) {
@@ -209,7 +209,7 @@ describe("session authentication", () => {
     expect(response.status).toBe(200);
     expectUserEmail(response.body as unknown, "evaluator@example.com");
     expect(response.headers["set-cookie"]).toEqual(
-      expect.arrayContaining([expect.stringContaining("appcyclone.sid=")]),
+      expect.arrayContaining([expect.stringContaining("AppsCyclone.sid=")]),
     );
     expect(String(response.headers["set-cookie"])).toContain("HttpOnly");
     expect(String(response.headers["set-cookie"])).toContain("SameSite=Lax");
@@ -251,7 +251,7 @@ describe("session authentication", () => {
       .set("Origin", allowedOrigin)
       .set(
         "Cookie",
-        `appcyclone.sid=${signSessionCookieValue(fixedSid, testSessionSecret)}`,
+        `AppsCyclone.sid=${signSessionCookieValue(fixedSid, testSessionSecret)}`,
       )
       .send({
         email: "evaluator@example.com",
@@ -453,7 +453,7 @@ describe("session authentication", () => {
     const productionApp = await createTestingApp({
       freshModules: true,
       nodeEnv: "production",
-      sessionCookieName: "appcyclone.sid",
+      sessionCookieName: "AppsCyclone.sid",
       sessionSecret: "prod_9x24QmV7nLr8sT6bY3pA5cD1eF0hJ2kM4qR6uW8z",
       trustProxyHops: 1,
     });
@@ -486,7 +486,7 @@ describe("session authentication", () => {
       const setCookie = String(response.headers["set-cookie"]);
 
       expect(response.status).toBe(200);
-      expect(setCookie).toContain("appcyclone.sid=");
+      expect(setCookie).toContain("AppsCyclone.sid=");
       expect(setCookie).toContain("HttpOnly");
       expect(setCookie).toContain("SameSite=Lax");
       expect(setCookie).toContain("Secure");

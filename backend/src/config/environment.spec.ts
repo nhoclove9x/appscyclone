@@ -12,7 +12,7 @@ describe("validateEnvironment", () => {
       DATABASE_URL: "postgresql://user:password@localhost:5432/portfolio",
       NODE_ENV: "development",
       PORT: 3000,
-      SESSION_COOKIE_NAME: "appcyclone.sid",
+      SESSION_COOKIE_NAME: "AppsCyclone.sid",
       SESSION_SECRET: "a".repeat(32),
       SESSION_TTL_SECONDS: 28_800,
       TRUST_PROXY_HOPS: 0,

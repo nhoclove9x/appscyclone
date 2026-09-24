@@ -51,6 +51,14 @@ export class ImportsApiService {
     return this.resultToResponse(result);
   }
 
+  async clearTransactions(input: {
+    readonly importedById: string;
+  }): Promise<DatasetMutationResponseDto> {
+    const result = await this.lifecycle.clearActiveTradeDataset(input);
+
+    return this.resultToResponse(result);
+  }
+
   private async resultToResponse(
     result: DatasetLifecycleResult,
   ): Promise<DatasetMutationResponseDto> {
@@ -62,6 +70,7 @@ export class ImportsApiService {
       dataset: toDatasetMetadataDto(dataset),
       tradeCount: result.tradeCount,
       priceCount: result.priceCount,
+      ...(result.unchanged === true ? { unchanged: true } : {}),
     };
   }
 }

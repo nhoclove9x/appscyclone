@@ -15,7 +15,7 @@ const environmentSchema = z
       .enum(["development", "test", "production"])
       .default("development"),
     PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
-    SESSION_COOKIE_NAME: z.string().min(1).default("appcyclone.sid"),
+    SESSION_COOKIE_NAME: z.string().min(1).default("AppsCyclone.sid"),
     SESSION_SECRET: z.string().min(32),
     SESSION_TTL_SECONDS: z.coerce.number().int().min(60).default(28_800),
     TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(1).default(0),

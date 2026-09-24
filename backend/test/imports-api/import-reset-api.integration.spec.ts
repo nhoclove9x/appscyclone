@@ -54,7 +54,7 @@ async function createTestingApp(): Promise<INestApplication> {
   process.env.DATABASE_URL = requireDatabaseUrl();
   process.env.NODE_ENV = "test";
   process.env.ALLOWED_ORIGINS = allowedOrigin;
-  process.env.SESSION_COOKIE_NAME = "appcyclone.sid";
+  process.env.SESSION_COOKIE_NAME = "AppsCyclone.sid";
   process.env.SESSION_SECRET = "test-session-secret-at-least-32-characters";
   process.env.SESSION_TTL_SECONDS = "3600";
   process.env.TRUST_PROXY_HOPS = "0";
@@ -178,7 +178,7 @@ describe("protected import and sample reset APIs", () => {
     await app.close();
   });
 
-  it("rejects unauthenticated import and reset requests", async () => {
+  it("rejects unauthenticated import, reset, and clear requests", async () => {
     const importResponse = await request(server)
       .post("/api/v1/imports/trades")
       .set("Origin", allowedOrigin)
@@ -187,9 +187,14 @@ describe("protected import and sample reset APIs", () => {
       .post("/api/v1/datasets/reset-sample")
       .set("Origin", allowedOrigin)
       .send({ confirm: true });
+    const clearResponse = await request(server)
+      .post("/api/v1/datasets/clear-transactions")
+      .set("Origin", allowedOrigin)
+      .send({ confirm: true });
 
     expect(importResponse.status).toBe(401);
     expect(resetResponse.status).toBe(401);
+    expect(clearResponse.status).toBe(401);
   });
 
   it("rejects modifying requests from a mismatched origin", async () => {
@@ -201,11 +206,17 @@ describe("protected import and sample reset APIs", () => {
       .post("/api/v1/datasets/reset-sample")
       .set("Origin", "http://localhost.evil.example")
       .send({ confirm: true });
+    const clearResponse = await agent
+      .post("/api/v1/datasets/clear-transactions")
+      .set("Origin", "http://localhost.evil.example")
+      .send({ confirm: true });
 
     expect(importResponse.status).toBe(403);
     expect(recordFrom(importResponse.body).code).toBe("INVALID_ORIGIN");
     expect(resetResponse.status).toBe(403);
     expect(recordFrom(resetResponse.body).code).toBe("INVALID_ORIGIN");
+    expect(clearResponse.status).toBe(403);
+    expect(recordFrom(clearResponse.body).code).toBe("INVALID_ORIGIN");
   });
 
   it("successfully imports a valid trade CSV and records the authenticated importer", async () => {
@@ -227,6 +238,30 @@ describe("protected import and sample reset APIs", () => {
       where: { id: String(dataset.id) },
     });
     expect(storedDataset.importedById).toBe(userId);
+  });
+
+  it("reports no changes when importing the currently active valid trade CSV", async () => {
+    const originalDatasetId = await activeDatasetId(prisma);
+    const originalCounts = {
+      datasets: await prisma.dataset.count(),
+      trades: await prisma.trade.count(),
+    };
+
+    const response = await agent
+      .post("/api/v1/imports/trades")
+      .set("Origin", allowedOrigin)
+      .attach("file", Buffer.from(sampleContent().tradesCsv), "trades.csv");
+    const dataset = recordFrom(recordFrom(response.body).dataset);
+
+    expect(response.status).toBe(200);
+    expect(recordFrom(response.body).unchanged).toBe(true);
+    expect(recordFrom(response.body).tradeCount).toBe(200);
+    expect(dataset.source).toBe("SAMPLE");
+    expect(dataset.sourceFilename).toBe("trades.csv");
+    expect(dataset.id).toBe(originalDatasetId);
+    expect(await activeDatasetId(prisma)).toBe(originalDatasetId);
+    expect(await prisma.dataset.count()).toBe(originalCounts.datasets);
+    expect(await prisma.trade.count()).toBe(originalCounts.trades);
   });
 
   it("returns useful validation errors and preserves the active dataset for invalid CSV", async () => {
@@ -301,6 +336,44 @@ describe("protected import and sample reset APIs", () => {
     expect(await activeDatasetId(prisma)).toBe(originalDatasetId);
   });
 
+  it("successfully clears active transactions without deleting historical data", async () => {
+    const originalDatasetId = await activeDatasetId(prisma);
+
+    const response = await agent
+      .post("/api/v1/datasets/clear-transactions")
+      .set("Origin", allowedOrigin)
+      .send({ confirm: true });
+    const dataset = recordFrom(recordFrom(response.body).dataset);
+
+    expect(response.status).toBe(200);
+    expect(recordFrom(response.body).tradeCount).toBe(0);
+    expect(recordFrom(response.body).priceCount).toBe(5);
+    expect(dataset.source).toBe("UPLOAD");
+    expect(dataset.sourceFilename).toBe("empty-transactions.csv");
+    expect(dataset.importedById).toBe(userId);
+    expect(dataset.id).not.toBe(originalDatasetId);
+    expect(await activeDatasetId(prisma)).toBe(dataset.id);
+    expect(
+      await prisma.trade.count({ where: { datasetId: String(dataset.id) } }),
+    ).toBe(0);
+    expect(
+      await prisma.trade.count({ where: { datasetId: originalDatasetId } }),
+    ).toBe(200);
+  });
+
+  it("rejects clear transactions without explicit confirmation", async () => {
+    const originalDatasetId = await activeDatasetId(prisma);
+
+    const response = await agent
+      .post("/api/v1/datasets/clear-transactions")
+      .set("Origin", allowedOrigin)
+      .send({ confirm: false });
+
+    expect(response.status).toBe(400);
+    expect(recordFrom(response.body).code).toBe("INVALID_REQUEST");
+    expect(await activeDatasetId(prisma)).toBe(originalDatasetId);
+  });
+
   it("maps stale reset to HTTP 409 and preserves the active dataset", async () => {
     const originalDatasetId = await activeDatasetId(prisma);
     jest
@@ -309,6 +382,22 @@ describe("protected import and sample reset APIs", () => {
 
     const response = await agent
       .post("/api/v1/datasets/reset-sample")
+      .set("Origin", allowedOrigin)
+      .send({ confirm: true });
+
+    expect(response.status).toBe(409);
+    expect(recordFrom(response.body).code).toBe("DATASET_CHANGED");
+    expect(await activeDatasetId(prisma)).toBe(originalDatasetId);
+  });
+
+  it("maps stale clear transactions to HTTP 409 and preserves the active dataset", async () => {
+    const originalDatasetId = await activeDatasetId(prisma);
+    jest
+      .spyOn(lifecycle, "clearActiveTradeDataset")
+      .mockRejectedValueOnce(new DatasetLifecycleError("DATASET_CHANGED"));
+
+    const response = await agent
+      .post("/api/v1/datasets/clear-transactions")
       .set("Origin", allowedOrigin)
       .send({ confirm: true });
 

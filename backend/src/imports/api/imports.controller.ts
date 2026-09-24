@@ -19,7 +19,7 @@ import {
 import type { DatasetMutationResponseDto } from "./import-api.types";
 import { ImportsApiService } from "./imports-api.service";
 
-const MAX_TRADE_CSV_BYTES = 256 * 1024;
+const MAX_TRADE_CSV_BYTES = 1024 * 1024;
 
 interface UploadedCsvFile {
   readonly originalname: string;
@@ -96,6 +96,23 @@ export class ImportsController {
 
     try {
       return await this.imports.resetSampleData();
+    } catch (error: unknown) {
+      mapDatasetMutationError(error);
+    }
+  }
+
+  @Post("datasets/clear-transactions")
+  @HttpCode(200)
+  async clearTransactions(
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<DatasetMutationResponseDto> {
+    parseResetConfirmation(body);
+
+    try {
+      return await this.imports.clearTransactions({
+        importedById: request.user.id,
+      });
     } catch (error: unknown) {
       mapDatasetMutationError(error);
     }

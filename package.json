@@ -4,9 +4,10 @@
   "private": true,
   "packageManager": "pnpm@11.20.0",
   "scripts": {
-    "build": "pnpm --filter backend build",
-    "lint": "pnpm --filter backend lint",
-    "test": "pnpm --filter backend test",
-    "typecheck": "pnpm --filter backend typecheck"
+    "build": "pnpm --filter backend build && pnpm --filter frontend build",
+    "lint": "pnpm --filter backend lint && pnpm --filter frontend lint",
+    "test": "pnpm --filter backend test && pnpm --filter frontend test",
+    "test:all": "pnpm test && pnpm --filter backend test:integration",
+    "typecheck": "pnpm --filter backend typecheck && pnpm --filter frontend typecheck"
   }
 }

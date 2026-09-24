@@ -16,6 +16,7 @@ export interface DatasetMutationResponseDto {
   readonly dataset: DatasetMetadataDto;
   readonly tradeCount: number;
   readonly priceCount: number;
+  readonly unchanged?: boolean;
 }
 
 export interface ImportValidationErrorDto {

@@ -47,7 +47,7 @@ async function createTestingApp(): Promise<INestApplication> {
   process.env.DATABASE_URL = requireDatabaseUrl();
   process.env.NODE_ENV = "test";
   process.env.ALLOWED_ORIGINS = allowedOrigin;
-  process.env.SESSION_COOKIE_NAME = "appcyclone.sid";
+  process.env.SESSION_COOKIE_NAME = "AppsCyclone.sid";
   process.env.SESSION_SECRET = "test-session-secret-at-least-32-characters";
   process.env.SESSION_TTL_SECONDS = "3600";
   process.env.TRUST_PROXY_HOPS = "0";

@@ -21,6 +21,7 @@ import type { SampleCsvContent } from "./sample-data.service";
 
 export interface ActiveDatasetCapture {
   readonly expectedDatasetId: string;
+  readonly activeDatasetChecksum: string;
   readonly priceSnapshotId: string;
   readonly prices: readonly PortfolioPrice[];
 }
@@ -58,11 +59,16 @@ export interface DatasetLifecycleResult {
   readonly tradeCount: number;
   readonly priceCount: number;
   readonly calculation: PortfolioCalculation;
+  readonly unchanged?: boolean;
 }
 
 export interface ReplaceTradeDatasetInput {
   readonly csvContent: string;
   readonly filename: string;
+  readonly importedById?: string;
+}
+
+export interface ClearTradeDatasetInput {
   readonly importedById?: string;
 }
 
@@ -112,6 +118,7 @@ export class DatasetLifecycleService {
 
     return {
       expectedDatasetId: state.activeDatasetId,
+      activeDatasetChecksum: state.activeDataset.sourceChecksum,
       priceSnapshotId: state.activeDataset.priceSnapshotId,
       prices: portfolioPricesFromDatabasePrices(
         state.activeDataset.priceSnapshot.prices,
@@ -123,6 +130,7 @@ export class DatasetLifecycleService {
     input: ReplaceTradeDatasetInput,
   ): Promise<PreparedTradeReplacement> {
     const activeDataset = await this.captureActiveDataset();
+    const sourceChecksum = sha256Hex(input.csvContent);
     const tradeDataset = parseTradeCsv(input.csvContent);
     const validated = validateTradesAgainstPrices(
       tradeDataset,
@@ -132,7 +140,7 @@ export class DatasetLifecycleService {
     return {
       source: "UPLOAD",
       sourceFilename: input.filename,
-      sourceChecksum: sha256Hex(input.csvContent),
+      sourceChecksum,
       ...(input.importedById === undefined
         ? {}
         : { importedById: input.importedById }),
@@ -200,9 +208,59 @@ export class DatasetLifecycleService {
   async replaceActiveTradeDataset(
     input: ReplaceTradeDatasetInput,
   ): Promise<DatasetLifecycleResult> {
+    const activeDataset = await this.captureActiveDataset();
+
+    if (sha256Hex(input.csvContent) === activeDataset.activeDatasetChecksum) {
+      return {
+        ...(await this.resultFromActiveDataset(activeDataset.expectedDatasetId)),
+        unchanged: true,
+      };
+    }
+
     return this.activatePreparedTradeReplacement(
       await this.prepareTradeReplacement(input),
     );
+  }
+
+  async clearActiveTradeDataset(
+    input: ClearTradeDatasetInput = {},
+  ): Promise<DatasetLifecycleResult> {
+    const activeDataset = await this.captureActiveDataset();
+    const calculation = calculatePortfolio([], activeDataset.prices);
+
+    return this.prisma.$transaction(async (transaction) => {
+      const dataset = await transaction.dataset.create({
+        data: {
+          source: DatasetSource.UPLOAD,
+          sourceFilename: "empty-transactions.csv",
+          sourceChecksum: sha256Hex(""),
+          priceSnapshotId: activeDataset.priceSnapshotId,
+          ...(input.importedById === undefined
+            ? {}
+            : { importedById: input.importedById }),
+        },
+      });
+
+      const updatedRows = await transaction.$executeRaw`
+        UPDATE "application_state"
+        SET "active_dataset_id" = CAST(${dataset.id} AS uuid),
+            "updated_at" = CURRENT_TIMESTAMP
+        WHERE "id" = 1
+          AND "active_dataset_id" = CAST(${activeDataset.expectedDatasetId} AS uuid)
+      `;
+
+      if (updatedRows !== 1) {
+        throw new DatasetLifecycleError("DATASET_CHANGED");
+      }
+
+      return {
+        datasetId: dataset.id,
+        priceSnapshotId: activeDataset.priceSnapshotId,
+        tradeCount: 0,
+        priceCount: activeDataset.prices.length,
+        calculation,
+      };
+    });
   }
 
   prepareSampleDataset(sample: SampleCsvContent): PreparedSampleDataset {
