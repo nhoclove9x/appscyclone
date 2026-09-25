@@ -15,6 +15,7 @@ export default defineConfig({
   },
   plugins: [react()],
   server: {
+    allowedHosts: ["chester.tail4d1c59.ts.net"],
     proxy: {
       "/api/v1": {
         target: "http://localhost:3000",

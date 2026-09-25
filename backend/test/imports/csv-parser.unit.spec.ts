@@ -87,6 +87,14 @@ describe("CSV import parsing and validation", () => {
     ).toThrow(ImportValidationError);
   });
 
+  it("rejects impossible calendar dates instead of accepting date normalization", () => {
+    expect(() =>
+      parseTradeCsv(
+        tradeCsv("T1,2025-02-30T00:00:00Z,Binance,BTC,BUY,1,100,0"),
+      ),
+    ).toThrow(ImportValidationError);
+  });
+
   it("rejects invalid exchange and side values", () => {
     try {
       parseTradeCsv(

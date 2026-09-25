@@ -18,7 +18,6 @@ interface FilterFormValues {
   readonly from: string;
   readonly to: string;
   readonly sort: "ASC" | "DESC";
-  readonly pageSize: "25" | "50" | "100";
 }
 
 export function TransactionFilters({
@@ -38,7 +37,6 @@ export function TransactionFilters({
       from: apiUtcToInput(filters.from),
       to: apiUtcToInput(filters.to),
       sort: filters.sort,
-      pageSize: String(filters.pageSize) as FilterFormValues["pageSize"],
     },
   });
 
@@ -55,7 +53,7 @@ export function TransactionFilters({
         ...(to === undefined ? {} : { to }),
         sort: values.sort,
         page: 1,
-        pageSize: Number.parseInt(values.pageSize, 10),
+        pageSize: filters.pageSize,
       }),
     );
   }
@@ -122,7 +120,7 @@ export function TransactionFilters({
         </label>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-[minmax(12rem,16rem)_minmax(10rem,14rem)_auto] md:items-end">
+      <div className="grid gap-4 md:grid-cols-[minmax(12rem,16rem)_auto] md:items-end">
         <label className="grid gap-1 text-sm font-medium text-slate-700">
           Sort
           <select
@@ -131,17 +129,6 @@ export function TransactionFilters({
           >
             <option value="ASC">Oldest first</option>
             <option value="DESC">Newest first</option>
-          </select>
-        </label>
-        <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Page size
-          <select
-            className="focus-ring rounded-xl border border-slate-300 px-3 py-2"
-            {...register("pageSize")}
-          >
-            <option value="25">25</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
           </select>
         </label>
         <div className="flex flex-wrap items-end gap-2">

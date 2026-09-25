@@ -109,6 +109,11 @@ export function TransactionsPage() {
             onPageChange={(page) => {
               setSearchParams(searchParamsFromFilters({ ...filters, page }));
             }}
+            onPageSizeChange={(pageSize) => {
+              setSearchParams(
+                searchParamsFromFilters({ ...filters, page: 1, pageSize }),
+              );
+            }}
             pagination={transactions.data.pagination}
           />
         </section>

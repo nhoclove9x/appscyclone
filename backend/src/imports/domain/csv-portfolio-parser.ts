@@ -31,7 +31,7 @@ const TRADE_COLUMNS = [
 
 const PRICE_COLUMNS = ["as_of", "symbol", "price_usd"] as const;
 const UTC_TIMESTAMP_PATTERN =
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/u;
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?Z$/u;
 const DECIMAL_PATTERN = /^[+-]?(?:\d+|\d+\.\d+|\.\d+)$/u;
 
 function valueAt(
@@ -60,7 +60,9 @@ function parseUtcTimestamp(
   field: string,
   issues: ImportValidationIssue[],
 ): Date | undefined {
-  if (!UTC_TIMESTAMP_PATTERN.test(value)) {
+  const components = UTC_TIMESTAMP_PATTERN.exec(value);
+
+  if (components === null) {
     issues.push({
       code: "INVALID_TIMESTAMP",
       rowNumber,
@@ -71,8 +73,19 @@ function parseUtcTimestamp(
   }
 
   const timestamp = new Date(value);
+  const [year, month, day, hour, minute, second] = components
+    .slice(1)
+    .map(Number);
 
-  if (Number.isNaN(timestamp.getTime())) {
+  if (
+    Number.isNaN(timestamp.getTime()) ||
+    timestamp.getUTCFullYear() !== year ||
+    timestamp.getUTCMonth() + 1 !== month ||
+    timestamp.getUTCDate() !== day ||
+    timestamp.getUTCHours() !== hour ||
+    timestamp.getUTCMinutes() !== minute ||
+    timestamp.getUTCSeconds() !== second
+  ) {
     issues.push({
       code: "INVALID_TIMESTAMP",
       rowNumber,
